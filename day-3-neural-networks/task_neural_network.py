@@ -2,10 +2,9 @@
 Fully connected feedforward neural network
 """
 from typing import List, Tuple
-
+import random
 import numpy as np
 import mnist_loader
-
 
 def sigmoid(x: np.ndarray, derivative: bool = False) -> np.ndarray:
     """
@@ -39,10 +38,13 @@ class NeuralNetwork:
                 While the last layer should contain 10 nodes. Corresponding to the number of output classes. Example input:
                 [784, 30, 10]
         """
+        self.layers = layers
+        self.n_layers = len(self.layers)
+
         ## init biases
-        # self.biases = ...
+        self.biases = [np.random.normal(0,1, size = (30,1)),np.random.normal(0,1, size = (10,1))]
         ## init list of weight matrices
-        # self.weights = ...
+        self.weights = [np.random.normal(0,1, size = (30,784)),np.random.normal(0,1, size = (10,30))]
 
     def forward(self, X: np.ndarray) -> np.ndarray:
         """Performs the feedforward pass of the neural network.
@@ -54,6 +56,12 @@ class NeuralNetwork:
         Returns:
             np.ndarray: The prediction of the neural network
         """
+        input = X
+        for i in range(self.n_layers-1):
+            output = sigmoid(np.dot(self.weights[i], input) + self.biases[i])
+            input = output
+            
+        return(input)
 
         # for each layer in the network
             # (dot) multiply by the weights
@@ -86,6 +94,9 @@ class NeuralNetwork:
         Returns:
             np.ndarray: The loss/cost
         """
+        outcome = sum((output - actual)**2)/1
+        return(outcome)
+
         pass
 
     def SGD(
@@ -114,6 +125,17 @@ class NeuralNetwork:
             batch_size (int): Size of the batches used.
         """
         
+        for i in range(0,epochs):
+            #print(f"Running epoch {i}.")
+            random.shuffle(train_data)
+            batches = [train_data[i:i+batch_size] for i in range(0, len(train_data), batch_size)]
+            for batch in batches:
+                self.backprop(batch, learning_rate)
+            correct, total = self.evaluate(val_data)
+            print(f"correct: {correct}, total: {total}")
+
+
+
         # for each epochs (epochs just mean number of repeats)
             # (print epoch)
             # shuffle the data (hint: there is a package called random)
@@ -199,6 +221,17 @@ class NeuralNetwork:
             # do a forward pass
             # compare the output with the answer
         # return number of correct and total number of predictions.
+        
+        total_count = 0
+        correct_count = 0
+
+        for i in data:
+            total_count += 1
+            if np.argmax(self.forward(i[0])) == i[1]:
+                correct_count +=1
+
+        return(tuple([correct_count,total_count]))
+
         pass
 
 
@@ -210,24 +243,24 @@ if __name__ == "__main__":
     train_data, val_data, test_data = mnist_loader.load_data_wrapper()
 
     ## init your neural network
-    # network = NeuralNetwork([784, 30, 10])
+    network = NeuralNetwork([784, 30, 10])
 
     ## test forward pass on one example
-    # pixels = train_data[0][0] # one example
-    # answer = train_data[0][1]
-    # output = network.forward(X=pixels)
+     pixels = train_data[0][0] # one example
+     answer = train_data[0][1]
+     output = network.forward(X=pixels)
 
     ## calculate the cost
-    # cost = network.cost(output, actual=answer)
+    cost = network.cost(output, actual=answer)
 
     ## train using backprop.
     ## (this should be very slow with stachostic gradient descent)
-    # for i in range(10):
-    #     network.backprop(train_data, learning_rate=3)
-    #     print(network.evaluate(val_data))
+    for i in range(10):
+        network.backprop(train_data, learning_rate=3)
+        print(network.evaluate(val_data))
 
     ## train for one epoch
-    # network.SGD(train_data=train_data, epochs=1)
+    network.SGD(train_data=train_data, epochs=7, learning_rate=3, batch_size = 10)
     
     ## evaluate the performance:
-    # print(network.evaluate(val_data))
+    print(network.evaluate(val_data))
